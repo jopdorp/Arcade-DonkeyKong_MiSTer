@@ -2,12 +2,12 @@ module LFSR(
   input clk,
   input audio_clk_en,
   input I_RSTn,
-  output reg [7:0] LFSR = 255   // put here the initial value
+  output reg [7:0] LFSR   // put here the initial value
 );
 
 wire feedback = LFSR[7];
 
-always @(posedge clk) begin
+always @(posedge clk, negedge I_RSTn) begin
   if(!I_RSTn)begin
     LFSR <= 255;
   end else if(audio_clk_en) begin

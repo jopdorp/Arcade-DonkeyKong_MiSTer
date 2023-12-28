@@ -19,9 +19,10 @@ module resistor_capacitor_high_pass_filter #(
     input signed[15:0] in,
     output reg signed[15:0] out = 0
 );
+    /* verilator lint_off WIDTH */
     localparam longint DELTA_T_32_SHIFTED = (1 <<< 32) / SAMPLE_RATE;
     localparam longint R_C_32_SHIFTED = R * C_35_SHIFTED >>> 3;
-    localparam longint SMOOTHING_FACTOR_ALPHA_16_SHIFTED = (R_C_32_SHIFTED <<< 16) / (R_C_32_SHIFTED + DELTA_T_32_SHIFTED);
+    localparam int SMOOTHING_FACTOR_ALPHA_16_SHIFTED = (R_C_32_SHIFTED <<< 16) / (R_C_32_SHIFTED + DELTA_T_32_SHIFTED);
     
     wire[7:0] random_number;
 
@@ -38,7 +39,7 @@ module resistor_capacitor_high_pass_filter #(
             out <= 0;
             last_in <= 0;
         end else if(audio_clk_en)begin
-            out <= SMOOTHING_FACTOR_ALPHA_16_SHIFTED * (out + in - last_in) >> 16;
+            out <= SMOOTHING_FACTOR_ALPHA_16_SHIFTED * (out + in - last_in) >>> 16;
             last_in <= in + ((random_number >>> 6) - 2); // add noise to help convergence to 0
         end
     end

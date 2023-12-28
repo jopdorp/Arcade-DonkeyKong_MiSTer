@@ -98,7 +98,13 @@ dkong_wav_sound Analog_sound
 	.I_SW(I_DKJR ? 2'b00 : W_6H_Q[2:1])
 );
 
-reg[8:0] audio_clk_counter;
+localparam OVERSAMPLE = 2;
+localparam SAMPLE_RATE = 48000;
+localparam CLOCK_RATE = 24576000;
+localparam ticks_per_oversample = CLOCK_RATE / SAMPLE_RATE / OVERSAMPLE;
+
+// 24576000/48000 = 512 = 2^9, so 9 bits without oversampling, 8 bits with 4x oversampling
+reg[9:0] audio_clk_counter;
 wire audio_clk_en;
 assign audio_clk_en = audio_clk_counter == 0;
 wire signed[15:0] walk_out;
@@ -106,12 +112,14 @@ wire signed[15:0] walk_out;
 always@(posedge W_CLK_24576M, negedge W_RESETn) begin
 	if(!W_RESETn)begin
 		audio_clk_counter <= 0;
+	end else if(audio_clk_counter == ticks_per_oversample) begin
+		audio_clk_counter <= 0;
 	end else begin
 		audio_clk_counter <= audio_clk_counter + 1;
 	end
 end
 
-dk_walk #(.CLOCK_RATE(24576000),.SAMPLE_RATE(48000)) walk (
+dk_walk #(.CLOCK_RATE(CLOCK_RATE),.SAMPLE_RATE(SAMPLE_RATE * OVERSAMPLE)) walk (
 	.clk(W_CLK_24576M),
 	.I_RSTn(W_RESETn),
 	.audio_clk_en(audio_clk_en),
@@ -122,6 +130,7 @@ dk_walk #(.CLOCK_RATE(24576000),.SAMPLE_RATE(48000)) walk (
 //  SOUND MIXER (WAV + DIG ) -----------------------
 wire[14:0] sound_mix = ({1'b0, I_DKJR ? 15'd0 : WAV_ROM_DO, 6'b0} + {1'b0, (W_D_S_DAT >> 1) + (W_D_S_DAT >> 3), 6'b0});
 wire signed[15:0] sound_mix_16_bit = sound_mix - 2**14 + walk_out;
+// wire signed[15:0] sound_mix_16_bit = sound_mix - 2**14;
 
 assign O_SOUND_DAT = sound_mix_16_bit + 2**15;
 
